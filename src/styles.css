@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-display: "Fraunces", "Times New Roman", serif;
+  --font-sans: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --color-bg: var(--app-bg);
+  --color-surface: var(--app-surface);
+  --color-raised: var(--app-raised);
+  --color-fg: var(--app-fg);
+  --color-muted: var(--app-muted);
+  --color-subtle: var(--app-subtle);
+  --color-accent: var(--app-accent);
+  --color-accent-fg: var(--app-accent-fg);
+  --color-border: var(--app-border);
+  --color-danger: var(--app-danger);
+  --color-ok: var(--app-ok);
+  --color-warn: var(--app-warn);
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+:root {
+  --app-bg: #12100e;
+  --app-surface: #1c1916;
+  --app-raised: #26221e;
+  --app-fg: #f3eee8;
+  --app-muted: #a39b92;
+  --app-subtle: #7a736c;
+  --app-accent: #d4c4b0;
+  --app-accent-fg: #1a1612;
+  --app-border: color-mix(in oklab, var(--app-fg) 12%, transparent);
+  --app-danger: #c45c4a;
+  --app-ok: #7d9a78;
+  --app-warn: #c4a15a;
+  color-scheme: dark;
+}
+
+html.light {
+  --app-bg: #f4efe8;
+  --app-surface: #fbf8f3;
+  --app-raised: #efe8de;
+  --app-fg: #1c1916;
+  --app-muted: #6d655c;
+  --app-subtle: #8a8176;
+  --app-accent: #3d342c;
+  --app-accent-fg: #f6f1ea;
+  --app-border: color-mix(in oklab, var(--app-fg) 14%, transparent);
+  --app-danger: #a33d32;
+  --app-ok: #3f6b45;
+  --app-warn: #8a6a24;
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100dvh;
+    background: var(--app-bg);
+    color: var(--app-fg);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--app-accent) 40%, transparent);
+  }
+
+  details > summary {
+    cursor: pointer;
+  }
+  details > summary::-webkit-details-marker {
+    color: var(--app-muted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.neon-sign-board {
+  padding: 0.15rem 0.05rem 0.2rem;
+}
+
+.neon-sign {
+  color: #fff6d8;
+  letter-spacing: 0.035em;
+  text-shadow:
+    0 0 1px #fffaf0,
+    0 0 6px #ffe08a,
+    0 0 14px #e8b24a,
+    0 0 28px #c48420,
+    0 0 46px #8a5410;
+  animation: neon-flicker 7.4s infinite;
+}
+
+.neon-sign-sub {
+  color: #f3ddb0;
+  letter-spacing: 0.06em;
+  text-shadow:
+    0 0 2px #fff4dc,
+    0 0 8px #e0b05a,
+    0 0 18px #b07a2c,
+    0 0 30px #7a4e14;
+  animation: neon-flicker 8.6s infinite;
+  animation-delay: 1.15s;
+}
+
+html.light .neon-sign {
+  color: #7a3c08;
+  text-shadow:
+    0 0 4px #fff2c8,
+    0 0 10px #f0b44a,
+    0 0 18px #d49228;
+}
+
+html.light .neon-sign-sub {
+  color: #8a4a12;
+  text-shadow:
+    0 0 6px #f6d090,
+    0 0 14px #e0a24a;
+}
+
+@keyframes neon-flicker {
+  0%,
+  16%,
+  19.5%,
+  22%,
+  54%,
+  57%,
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  17.2%,
+  20.6% {
+    opacity: 0.28;
+    filter: brightness(0.35);
+  }
+  55.4% {
+    opacity: 0.62;
+    filter: brightness(0.7);
+  }
+  71% {
+    opacity: 0.9;
+  }
+  88% {
+    opacity: 0.97;
+  }
+}
+
+.add-sheet {
+  animation: add-sheet-in 200ms ease-out;
+}
+
+@keyframes add-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
