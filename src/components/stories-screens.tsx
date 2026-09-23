@@ -153,6 +153,50 @@ export function StoriesList() {
   );
 }
 
+export function AllStoriesScreen() {
+  const stories = useApp((s) => s.lib.stories);
+  const push = useApp((s) => s.push);
+
+  const sorted = useMemo(() => {
+    const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+    const authorOf = (s: Story) => s.author.trim() || "Unknown author";
+    const titleOf = (s: Story) => s.title.trim() || "Untitled story";
+    return [...stories].sort((a, b) => {
+      const byAuthor = collator.compare(authorOf(a), authorOf(b));
+      if (byAuthor !== 0) return byAuthor;
+      return collator.compare(titleOf(a), titleOf(b));
+    });
+  }, [stories]);
+
+  return (
+    <Screen title="All stories">
+      {sorted.length === 0 ? (
+        <EmptyState
+          title="No stories yet"
+          body="Create a brand new story, or import one page by page from a screenshot, file, or typed text."
+        />
+      ) : (
+        <>
+          <p className="mb-3 text-sm text-subtle">
+            {sorted.length} stor{sorted.length === 1 ? "y" : "ies"} · sorted by author, then title
+          </p>
+          {sorted.map((s) => (
+            <ListRow
+              key={s.id}
+              title={s.title || "Untitled story"}
+              subtitle={s.author.trim() || "Unknown author"}
+              onClick={() => push({ view: "story", id: s.id, title: s.title || "Story" })}
+              trailing={
+                s.favourite ? <Star className="size-4 fill-accent text-accent" /> : undefined
+              }
+            />
+          ))}
+        </>
+      )}
+    </Screen>
+  );
+}
+
 export function StoryDetail() {
   const id = useApp((s) => s.nav[s.nav.length - 1]?.id);
   const story = useApp((s) => s.lib.stories.find((x) => x.id === id));
