@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
+  Cloud,
+  CloudOff,
   Download,
+  RefreshCw,
   ShieldCheck,
   Upload,
 } from "lucide-react";
@@ -11,6 +14,7 @@ import type { AutoLock, Category } from "@/lib/library/types";
 import { runHealthCheck } from "@/lib/library/health";
 import { libraryToJson, parseLibraryJson } from "@/lib/library/storage";
 import { useApp } from "@/lib/store";
+import { syncManager, useSyncStatus } from "@/lib/sync/manager";
 import { downloadBlob, uid } from "@/lib/utils";
 import { Screen } from "./chrome";
 import { Button, EmptyState, Field, Input, ListRow, Textarea } from "./ui";
@@ -21,13 +25,20 @@ export function SettingsScreen() {
   const setTheme = useApp((s) => s.setTheme);
   const autoLock = useApp((s) => s.lib.settings.autoLock);
   const patchSettings = useApp((s) => s.patchSettings);
+  const syncStatus = useSyncStatus();
 
   return (
     <Screen title="Settings">
       <p className="mb-4 text-sm leading-relaxed text-muted">
-        Everything stays on this device. There is no account and nothing is shared.
+        Your library lives on this device by default. Turn on Cloud sync to share it
+        privately across your own devices using a secret sync code.
       </p>
 
+      <ListRow
+        title="Cloud sync"
+        subtitle={syncStatus.connected ? "On — synced across your devices" : "Off — keep in sync across devices"}
+        onClick={() => push({ view: "sync", title: "Cloud sync" })}
+      />
       <ListRow
         title="Passcode"
         subtitle="Change the unlock code"
@@ -624,6 +635,234 @@ export function BackupScreen() {
       </label>
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
       {note ? <p className="mt-3 text-sm text-ok">{note}</p> : null}
+    </Screen>
+  );
+}
+
+function relativeTime(ts: number | null): string {
+  if (!ts) return "not yet";
+  const secs = Math.round((Date.now() - ts) / 1000);
+  if (secs < 5) return "just now";
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} h ago`;
+  return `${Math.round(hrs / 24)} d ago`;
+}
+
+export function SyncScreen() {
+  const status = useSyncStatus();
+  const lib = useApp((s) => s.lib);
+  const askConfirm = useApp((s) => s.askConfirm);
+  const closeConfirm = useApp((s) => s.closeConfirm);
+
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [choice, setChoice] = useState<{ code: string; stories: number; characters: number } | null>(
+    null,
+  );
+
+  async function onContinue() {
+    setError("");
+    const trimmed = code.trim();
+    if (trimmed.length < 6) {
+      setError("Sync code must be at least 6 characters.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const probe = await syncManager.probe(trimmed);
+      if (!probe.found) {
+        // First device on this code — seed the cloud from here.
+        const res = await syncManager.connect(trimmed, "push");
+        if (!res.ok) setError(res.error ?? "Could not connect.");
+        else setCode("");
+      } else {
+        setChoice({ code: trimmed, stories: probe.stories, characters: probe.characters });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reach the sync service.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resolveChoice(direction: "pull" | "push") {
+    if (!choice) return;
+    const pending = choice;
+    const run = async () => {
+      setBusy(true);
+      setError("");
+      try {
+        const res = await syncManager.connect(pending.code, direction);
+        if (!res.ok) setError(res.error ?? "Could not connect.");
+        else {
+          setChoice(null);
+          setCode("");
+        }
+      } finally {
+        setBusy(false);
+      }
+    };
+    if (direction === "pull") {
+      askConfirm({
+        title: "Replace this device's library?",
+        body: `This will replace what is on this device with the cloud copy (${pending.stories} stories, ${pending.characters} people). Your current device data will be overwritten.`,
+        confirmLabel: "Download cloud copy",
+        danger: true,
+        onConfirm: () => {
+          closeConfirm();
+          void run();
+        },
+      });
+    } else {
+      askConfirm({
+        title: "Overwrite the cloud copy?",
+        body: `This will replace the cloud copy (${pending.stories} stories, ${pending.characters} people) with this device's library. Other devices will download this version.`,
+        confirmLabel: "Upload this device",
+        danger: true,
+        onConfirm: () => {
+          closeConfirm();
+          void run();
+        },
+      });
+    }
+  }
+
+  function disconnect() {
+    askConfirm({
+      title: "Turn off Cloud sync?",
+      body: "This device will stop syncing. The cloud copy and other devices are not affected, and nothing on this device is deleted.",
+      confirmLabel: "Turn off sync",
+      onConfirm: () => {
+        syncManager.disconnect();
+        closeConfirm();
+      },
+    });
+  }
+
+  if (status.connected) {
+    const phaseLabel =
+      status.phase === "syncing"
+        ? "Syncing…"
+        : status.phase === "error"
+          ? "Sync error"
+          : "Up to date";
+    return (
+      <Screen title="Cloud sync">
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-raised p-4">
+          <Cloud className="size-6 text-ok" />
+          <div className="min-w-0">
+            <p className="font-medium">Sync is on</p>
+            <p className="text-sm text-muted">
+              {phaseLabel} · last synced {relativeTime(status.lastSyncedAt)}
+            </p>
+          </div>
+        </div>
+
+        <p className="mb-4 text-sm leading-relaxed text-muted">
+          Changes on this device upload automatically, and changes made elsewhere appear
+          here within a few seconds. This device currently holds {lib.stories.length} stories
+          and {lib.characters.length} people.
+        </p>
+
+        <Field label="Your sync code">
+          <Input value={status.code ?? ""} readOnly className="font-mono" />
+        </Field>
+        <p className="mb-4 mt-1 text-xs text-muted">
+          Enter this exact code on another device (Settings → Cloud sync) to link it.
+        </p>
+
+        <Button className="w-full" onClick={() => void syncManager.syncNow()} disabled={status.phase === "syncing"}>
+          <RefreshCw className={`size-4 ${status.phase === "syncing" ? "animate-spin" : ""}`} /> Sync now
+        </Button>
+        <button
+          type="button"
+          onClick={disconnect}
+          className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-md border border-border bg-raised text-sm font-medium text-danger"
+        >
+          <CloudOff className="size-4" /> Turn off sync on this device
+        </button>
+        {status.error ? <p className="mt-3 text-sm text-danger">{status.error}</p> : null}
+      </Screen>
+    );
+  }
+
+  if (choice) {
+    return (
+      <Screen title="Cloud sync">
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-raised p-4">
+          <Cloud className="size-6 text-accent" />
+          <div className="min-w-0">
+            <p className="font-medium">A cloud library already exists</p>
+            <p className="text-sm text-muted">
+              {choice.stories} stories · {choice.characters} people
+            </p>
+          </div>
+        </div>
+        <p className="mb-4 text-sm leading-relaxed text-muted">
+          There is already a library saved under this code. Choose which copy to keep — the
+          other will be overwritten.
+        </p>
+        <Button className="w-full" onClick={() => void resolveChoice("pull")} disabled={busy}>
+          <Download className="size-4" /> Download cloud copy to this device
+        </Button>
+        <button
+          type="button"
+          onClick={() => void resolveChoice("push")}
+          disabled={busy}
+          className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-md border border-border bg-raised text-sm font-medium disabled:opacity-60"
+        >
+          <Upload className="size-4" /> Upload this device (overwrite cloud)
+        </button>
+        <button
+          type="button"
+          onClick={() => setChoice(null)}
+          className="mt-3 flex h-11 w-full items-center justify-center text-sm text-muted"
+        >
+          Cancel
+        </button>
+        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen title="Cloud sync">
+      <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-raised p-4">
+        <CloudOff className="size-6 text-muted" />
+        <div className="min-w-0">
+          <p className="font-medium">Sync is off</p>
+          <p className="text-sm text-muted">Your library stays only on this device.</p>
+        </div>
+      </div>
+      <p className="mb-4 text-sm leading-relaxed text-muted">
+        Pick a private sync code and enter the same one on each of your devices to keep the
+        whole library — stories, people, images, audiobooks and settings — in sync. Anyone who
+        knows the code can access this library, so choose something long and hard to guess and
+        do not share it.
+      </p>
+      <Field label="Sync code">
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="e.g. a long private phrase"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) {
+              void onContinue();
+            }
+          }}
+        />
+      </Field>
+      <Button className="mt-3 w-full" onClick={() => void onContinue()} disabled={busy}>
+        <Cloud className="size-4" /> {busy ? "Connecting…" : "Turn on sync"}
+      </Button>
+      {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
     </Screen>
   );
 }

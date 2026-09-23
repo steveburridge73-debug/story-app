@@ -24,8 +24,10 @@ import {
   HealthScreen,
   RulesScreen,
   BackupScreen,
+  SyncScreen,
 } from "@/components/settings-screens";
 import { autoLockMs, currentView, useApp } from "@/lib/store";
+import { syncManager } from "@/lib/sync/manager";
 import type { ViewName } from "@/lib/library/types";
 
 export const Route = createFileRoute("/")({ component: Home });
@@ -33,6 +35,7 @@ export const Route = createFileRoute("/")({ component: Home });
 function Home() {
   const unlocked = useApp((s) => s.unlocked);
   const hydrate = useApp((s) => s.hydrate);
+  const hydrated = useApp((s) => s.hydrated);
   const touch = useApp((s) => s.touch);
   const lock = useApp((s) => s.lock);
   const lastActivity = useApp((s) => s.lastActivity);
@@ -44,6 +47,12 @@ function Home() {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // Once the local library is loaded, start background cloud sync if this
+  // device has previously been linked to a sync code.
+  useEffect(() => {
+    if (hydrated) syncManager.init();
+  }, [hydrated]);
 
   useEffect(() => {
     if (!unlocked) return;
@@ -174,6 +183,8 @@ function ActiveView({ view }: { view: ViewName }) {
       return <PasscodeScreen />;
     case "backup":
       return <BackupScreen />;
+    case "sync":
+      return <SyncScreen />;
     default:
       return <HomeScreen />;
   }
