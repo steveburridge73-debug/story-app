@@ -4,7 +4,7 @@ import { BottomNav, PhoneShell } from "@/components/chrome";
 import { HomeScreen } from "@/components/home-screen";
 import { LockScreen } from "@/components/lock-screen";
 import { ConfirmModal } from "@/components/ui";
-import { StoriesHub, StoriesList, StoryDetail, StoryEdit, StoryImport } from "@/components/stories-screens";
+import { AllStoriesScreen, StoriesHub, StoriesList, StoryDetail, StoryEdit, StoryImport } from "@/components/stories-screens";
 import { StoryNewScreen } from "@/components/story-new-screen";
 import { StoryReader } from "@/components/reader-screen";
 import { CharactersList, CharacterDetail, CharacterEdit } from "@/components/characters-screens";
@@ -115,6 +115,8 @@ function ActiveView({ view }: { view: ViewName }) {
       return <StoriesHub />;
     case "stories-list":
       return <StoriesList />;
+    case "all-stories":
+      return <AllStoriesScreen />;
     case "story":
       return <StoryDetail />;
     case "story-edit":

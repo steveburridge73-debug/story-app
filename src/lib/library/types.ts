@@ -210,6 +210,7 @@ export type ViewName =
   | "home"
   | "stories"
   | "stories-list"
+  | "all-stories"
   | "story"
   | "story-edit"
   | "story-reader"

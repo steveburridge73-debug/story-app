@@ -4,6 +4,7 @@ import {
   Folders,
   Headphones,
   Layers,
+  Library,
   Link as LinkIcon,
   Moon,
   PenLine,
@@ -98,6 +99,27 @@ export function HomeScreen() {
         <p className="mb-4 text-sm text-subtle">
           {stories} stor{stories === 1 ? "y" : "ies"} · {people} {people === 1 ? "person" : "people"}
         </p>
+
+        <button
+          type="button"
+          onClick={() => push({ view: "all-stories", title: "All stories" })}
+          className="mb-3 flex min-h-[5.25rem] w-full items-center gap-3 rounded-lg border-2 border-accent bg-accent/10 px-3 py-3.5 text-left"
+        >
+          <span className="flex size-12 items-center justify-center rounded-md bg-accent text-accent-fg">
+            <Library className="size-6" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-lg font-semibold leading-tight text-accent">
+              Show All Stories
+            </span>
+            <span className="mt-0.5 block text-sm text-muted">
+              Every story by title and author, sorted A–Z
+            </span>
+          </span>
+          <span className="rounded-full bg-accent px-2.5 py-1 text-sm font-semibold text-accent-fg">
+            {stories}
+          </span>
+        </button>
 
         <div className="mb-3 grid grid-cols-1 gap-2">
           {FEATURE.map((item) => {
