@@ -243,7 +243,8 @@ export type ViewName =
   | "health"
   | "rules"
   | "passcode"
-  | "backup";
+  | "backup"
+  | "sync";
 
 export interface NavFrame {
   view: ViewName;
